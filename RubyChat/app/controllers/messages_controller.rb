@@ -30,10 +30,11 @@ class MessagesController < ApplicationController
   end
 
   def create
+    msgbody = params[:body].upcase!
     message = Message.create(
         from: params[:from],
         to: params[:to],
-        body: params[:body]    
+        body: msgbody   
     )
     render json: message, status: :created
   end
