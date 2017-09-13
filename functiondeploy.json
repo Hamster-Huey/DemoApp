@@ -1,0 +1,143 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppName": {
+      "type": "string",
+      "defaultValue": "developer-finder",
+      "metadata": {
+        "description": "The name of the web client app that you wish to create."
+      }
+    },
+    "sourceCodeRepositoryURL": {
+      "type": "string",
+      "defaultValue": "https://github.com/<YOUR REPOSITORY>/DemoApp",
+      "metadata": {
+        "description": "Source code repository URL"
+      }
+    },
+    "sourceCodeBranch": {
+      "type": "string",
+      "defaultValue": "master",
+      "metadata": {
+        "description": "Sourcecode Repo branch"
+      }
+    },
+    "sourceCodeManualIntegration": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Use 'true' if you are deploying from the base repo, 'false' if you are deploying from your own fork. If you're using 'false', make sure you have admin permissions to the repo. If you get an error, you should add GitHub integration to another web app manually, so that you get a GitHub access token associated with your Azure Subscription."
+      }
+    }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "webAppName": "[parameters('webAppName')]",
+    "functionAppName": "[concat(parameters('webAppName'), '-function')]",
+    "storageAccountName": "[replace(variables('webAppName'), '-', '')]",
+    "applicationInsightsName":"[parameters('webAppName')]",
+    "functionAppServicePlanName": "[variables('functionAppName')]",
+  },
+  "resources":  [   
+  {
+      "type": "microsoft.insights/components",
+      "name": "[variables('applicationInsightsName')]",
+      "apiVersion": "2014-08-01",
+      "location": "East US",
+      "kind": "other",
+      "properties": {
+          "ApplicationId": "[variables('applicationInsightsName')",    
+          "Application_Type": "other"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "sku": {
+          "name": "S1",
+          "tier": "Standard",
+          "size": "S1",
+          "family": "S",
+          "capacity": 1
+      },
+      "kind": "app",
+      "name": "[variables('functionAppServicePlanName')]",
+      "apiVersion": "2016-09-01",
+      "location": "[parameters('nonLinuxWebAppLocation')]",
+      "properties": {
+          "name": "[variables('functionAppServicePlanName')]",
+          "workerTierName": null,
+          "adminSiteName": null,
+          "hostingEnvironmentProfile": null,
+          "perSiteScaling": false,
+          "reserved": false,
+          "targetWorkerCount": 0,
+          "targetWorkerSizeId": 0
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2016-01-01",
+      "location": "[parameters('nonLinuxWebAppLocation')]",
+      "kind": "Storage",
+      "sku": {
+        "name": "Standard_RAGRS",
+        "tier": "Standard"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "kind": "functionapp",
+      "name": "[variables('functionAppName')]",
+      "apiVersion": "2016-03-01",
+      "location": "[parameters('nonLinuxWebAppLocation')]",
+      "properties": {
+          "name": "[variables('functionAppName')]",
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('functionAppServicePlanName'))]",
+          "clientAffinityEnabled": false,
+          "siteConfig": {
+            "AlwaysOn": true
+          }
+      },
+      "resources": [
+        {
+          "type": "config",
+          "name": "appsettings",
+          "apiVersion": "2015-08-01",
+          "properties": {
+            "FUNCTIONS_EXTENSION_VERSION": "~1",
+            "WEBSITE_NODE_DEFAULT_VERSION": "6.5.0",
+            "WEBSITE_CONTENTSHARE": "[concat(variables('functionAppName'), substring(uniqueString(resourceGroup().id), 0, 4))]",
+            "AzureWebJobsDashboard": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1)]",
+            "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1)]",
+            "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1)]",
+            "MS_ApplicationInsightsInstrumentationKey": "[reference(concat('microsoft.insights/components/', variables('applicationInsightsName'))).InstrumentationKey]",
+            "project": "AppServices/FunctionApp"
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('microsoft.insights/components', variables('applicationInsightsName'))]"
+          ]
+        },
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "properties": {
+            "RepoUrl": "[parameters('sourceCodeRepositoryURL')]",
+            "branch": "[parameters('sourceCodeBranch')]",
+            "IsManualIntegration": "parameters('sourceCodeManualIntegration')]"
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites/', variables('functionAppName'))]",
+            "[resourceId('Microsoft.Web/Sites/config', variables('functionAppName'), 'appsettings')]"
+          ]
+        }
+      ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('functionAppServicePlanName'))]"
+      ]
+    }
+}

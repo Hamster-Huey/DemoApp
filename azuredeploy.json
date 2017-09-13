@@ -157,110 +157,10 @@
   },
   "resources": [
     {
-      "type": "microsoft.insights/components",
-      "name": "[variables('applicationInsightsName')]",
-      "apiVersion": "2014-08-01",
-      "location": "East US",
-      "kind": "other",
-      "properties": {
-          "ApplicationId": "[variables('applicationInsightsName')",    
-          "Application_Type": "other"
-      }
-    },
-    {
       "type": "Microsoft.Web/serverfarms",
       "sku": {
-          "name": "B1",
-          "tier": "Basic",
-          "size": "B1",
-          "family": "B",
-          "capacity": 1
-      },
-      "kind": "app",
-      "name": "[variables('functionAppServicePlanName')]",
-      "apiVersion": "2016-09-01",
-      "location": "[parameters('nonLinuxWebAppLocation')]",
-      "properties": {
-          "name": "[variables('functionAppServicePlanName')]",
-          "workerTierName": null,
-          "adminSiteName": null,
-          "hostingEnvironmentProfile": null,
-          "perSiteScaling": false,
-          "reserved": false,
-          "targetWorkerCount": 0,
-          "targetWorkerSizeId": 0
-      }
-    },
-    {
-      "type": "Microsoft.Storage/storageAccounts",
-      "name": "[variables('storageAccountName')]",
-      "apiVersion": "2016-01-01",
-      "location": "[parameters('nonLinuxWebAppLocation')]",
-      "kind": "Storage",
-      "sku": {
-        "name": "Standard_RAGRS",
+        "name": "S3",
         "tier": "Standard"
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites",
-      "kind": "functionapp",
-      "name": "[variables('functionAppName')]",
-      "apiVersion": "2016-03-01",
-      "location": "[parameters('nonLinuxWebAppLocation')]",
-      "properties": {
-          "name": "[variables('functionAppName')]",
-          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('functionAppServicePlanName'))]",
-          "clientAffinityEnabled": false,
-          "siteConfig": {
-            "AlwaysOn": true
-          }
-      },
-      "resources": [
-        {
-          "type": "config",
-          "name": "appsettings",
-          "apiVersion": "2015-08-01",
-          "properties": {
-            "FUNCTIONS_EXTENSION_VERSION": "~1",
-            "WEBSITE_NODE_DEFAULT_VERSION": "6.5.0",
-            "WEBSITE_CONTENTSHARE": "[concat(variables('functionAppName'), substring(uniqueString(resourceGroup().id), 0, 4))]",
-            "AzureWebJobsDashboard": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1)]",
-            "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1)]",
-            "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1)]",
-            "MS_ApplicationInsightsInstrumentationKey": "[reference(concat('microsoft.insights/components/', variables('applicationInsightsName'))).InstrumentationKey]",
-            "project": "AppServices/FunctionApp"
-          },
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
-            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-            "[resourceId('microsoft.insights/components', variables('applicationInsightsName'))]"
-          ]
-        },
-        {
-          "apiVersion": "2015-08-01",
-          "name": "web",
-          "type": "sourcecontrols",
-          "properties": {
-            "RepoUrl": "[parameters('sourceCodeRepositoryURL')]",
-            "branch": "[parameters('sourceCodeBranch')]",
-            "IsManualIntegration": "parameters('sourceCodeManualIntegration')]"
-          },
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites/', variables('functionAppName'))]",
-            "[resourceId('Microsoft.Web/Sites/config', variables('functionAppName'), 'appsettings')]"
-          ]
-        }
-      ],
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('functionAppServicePlanName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Web/serverfarms",
-      "sku": {
-        "name": "B1",
-        "tier": "Basic"
       },
       "kind": "linux",
       "name": "[variables('webAppServicePlanName')]",
@@ -281,8 +181,8 @@
     {
       "type": "Microsoft.Web/serverfarms",
       "sku": {
-        "name": "B1",
-        "tier": "Basic"
+        "name": "S3",
+        "tier": "Standard"
       },
       "kind": "linux",
       "name": "[variables('chatAppServicePlanName')]",
@@ -516,7 +416,7 @@
                               }
                           },
                           "function": {
-                              "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+                              "id": "[concat('/subscriptions/',subscription().id,'/resourceGroups/DeveloperFinderIgniteFunction/providers/Microsoft.Web/sites/developer-finder-ignite-function/functions/TrackCustomEvent')]"
                           }
                       }
                   },
@@ -535,7 +435,7 @@
                               }
                           },
                           "function": {
-                              "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+                              "id": "[concat('/subscriptions/',subscription().id,'/resourceGroups/DeveloperFinderIgniteFunction/providers/Microsoft.Web/sites/developer-finder-ignite-function/functions/TrackCustomEvent')]"
                           }
                       }
                   }
@@ -554,8 +454,7 @@
         }
       },
       "dependsOn": [
-          "[resourceId('Microsoft.Web/connections', variables('twilioConnectionName'))]",
-          "[resourceId('Microsoft.Web/Sites/sourcecontrols', variables('functionAppName'), 'web')]"
+          "[resourceId('Microsoft.Web/connections', variables('twilioConnectionName'))]"
       ]
     },
     {
